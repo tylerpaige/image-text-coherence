@@ -1,0 +1,44 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: laion
+    ports:
+      # Published on 5433 -- 5432 is commonly already taken by a native
+      # Postgres install on the host.
+      - "5433:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Auto-runs on first container init: creates the vector extension,
+      # the images table, and its unique constraint.
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./web
+      target: dev
+    ports:
+      - "3000:3000"
+    environment:
+      # `db` resolves via Docker's internal network -- this container never
+      # talks to the remote Fly Postgres instance.
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/laion
+      APP_PASSWORD: ${APP_PASSWORD:-changeme}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in a .env file (see .env.example)}
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
