@@ -8,6 +8,7 @@ services:
     ports:
       # Published on 5433 -- 5432 is commonly already taken by a native
       # Postgres install on the host.
+      # NOTE that this exposed publicly so that a Mac can seed the db after using its ARM chip to create embeddings
       - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data

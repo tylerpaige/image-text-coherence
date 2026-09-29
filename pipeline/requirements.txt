@@ -2,6 +2,7 @@ img2dataset==1.45.0
 open_clip_torch==2.29.0
 torch>=2.2
 huggingface_hub>=0.24
+requests>=2.31
 pandas>=2.0
 pyarrow>=14.0
 psycopg2-binary>=2.9

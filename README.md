@@ -68,6 +68,26 @@ Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`,
 `--limit 500`) to confirm your HF token and Postgres connection work before
 committing to the full ~250k-image run.
 
+**Both download steps are resumable across sessions** -- safe to Ctrl-C or
+close your laptop and pick up later by just re-running the same command:
+
+- `fetch_metadata.py`: each shard's raw parquet file is ~3-4GB. We can't rely
+  on `huggingface_hub`'s own caching for this -- as of `huggingface_hub` 2.x
+  it downloads to a process-unique temp file and deletes it on any
+  interruption (no cross-process resume). Instead this script does its own
+  HTTP Range-based resumable download into `data/hf_raw_shards/`, and once a
+  shard is fully downloaded and sampled it's cached at the row level in
+  `data/metadata_shards/` and the raw file is deleted. Re-running the exact
+  same command resumes the in-progress shard's download and skips any shard
+  already sampled.
+- `download_images.py`: img2dataset's incremental mode (on by default) skips
+  any shard it already finished. `--samples-per-shard` (default 1000) caps
+  how much work gets redone for the one shard that was mid-download when the
+  process was killed.
+- `embed_and_seed.py`: each image is deleted from disk right after it's
+  successfully embedded and inserted (`ON CONFLICT DO NOTHING`), so a
+  restart just picks up with whatever images are still on disk.
+
 ## 2. Push to the remote database
 
 1. Create a Fly Managed Postgres cluster and enable the **Vector** extension

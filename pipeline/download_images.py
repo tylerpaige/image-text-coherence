@@ -5,6 +5,14 @@ by fetch_metadata.py, using img2dataset.
 We don't need to keep images long-term (the web app hotlinks the original
 URLs), so this downloads at a modest resolution just large enough for CLIP's
 224px preprocessing.
+
+Resumable across sessions: img2dataset's incremental mode (on by default,
+set explicitly below) writes a stats file per completed shard and skips any
+shard whose stats file already exists on the next run. Killing this script
+and re-running it with the same --output folder picks up where it left off
+-- at worst it redoes the one shard that was in progress when it was
+killed, which is why --samples-per-shard defaults to a small 1000 (less
+work to redo, at the cost of some scheduling overhead).
 """
 
 import argparse
@@ -27,6 +35,14 @@ def main():
     parser.add_argument("--image-size", type=int, default=384)
     parser.add_argument("--processes", type=int, default=4)
     parser.add_argument("--threads", type=int, default=32)
+    parser.add_argument(
+        "--samples-per-shard",
+        type=int,
+        default=1000,
+        help="rows per img2dataset shard -- also the resume granularity: "
+        "a shard in progress when the script is killed gets fully redone "
+        "on the next run, so smaller = less wasted work but more overhead",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output, exist_ok=True)
@@ -43,11 +59,16 @@ def main():
         f"--image_size={args.image_size}",
         f"--processes_count={args.processes}",
         f"--thread_count={args.threads}",
-        "--number_sample_per_shard=10000",
+        f"--number_sample_per_shard={args.samples_per_shard}",
+        "--incremental_mode=incremental",
         "--save_additional_columns",
         json.dumps(["similarity"]),
     ]
     print("Running:", " ".join(cmd))
+    print(
+        "(safe to Ctrl-C and re-run this exact command later -- "
+        "already-completed shards are skipped)"
+    )
     subprocess.run(cmd, check=True)
 
     downloaded = count_downloaded(args.output)
