@@ -138,19 +138,23 @@ kamal deploy
 
 ### Seed the remote database
 
-Set up an SSH tunnel so you can access the remote Postgres service (which is not exposed publicly for safety). Note that we use port `5434` to avoid conflicts with other local services.
+The local Compose database and the Kamal accessory are both Postgres 16. `db/push_to_remote.sh` runs `pg_dump` and `pg_restore` inside the Compose `db` container so the dump is written by that same major version. A newer client installed on your Mac (Homebrew `libpq` 18, for example) adds settings Postgres 16 rejects.
+
+The script reads the server from `config/deploy.yml` and `POSTGRES_PASSWORD` from `.env.production`. It opens an SSH tunnel to the database accessory, pushes the local `images` table, and closes the tunnel when it finishes.
+
+Start the local database if it is not already running:
 
 ```bash
-ssh -N -L 5434:localhost:5432 root@<SERVER_IP> &
+docker compose up -d db
 ```
 
-Then run this script to push your local db to the remote db
+Then:
 
 ```bash
-REMOTE_DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5434/laion ./db/push_to_remote.sh
+./db/push_to_remote.sh
 ```
 
-Kill the tunnel (`kill %1`, or `fg` then Ctrl-C) when done.
+Note that running that command will clear out the existing `images` table on the remote db. In other words, it is not resumable.
 
 ## Local development
 

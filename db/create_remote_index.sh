@@ -173,18 +173,8 @@ echo "Checking the remote database through the tunnel"
 docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   psql -h host.docker.internal -p "$LOCAL_PORT" -U "$PGUSER" -d "$PGDATABASE" -c "SELECT 1" >/dev/null
 
-echo "Dumping local 'images' table inside the db container"
-docker compose exec -T db pg_dump -U postgres -d laion -Fc -t images -f /tmp/laion_images.dump
-
-echo "Restoring into remote database"
-echo "This may take upwards of 20 minutes..."
-docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  pg_restore --clean --if-exists --no-owner --no-privileges \
-  -h host.docker.internal -p "$LOCAL_PORT" -U "$PGUSER" -d "$PGDATABASE" \
-  /tmp/laion_images.dump
-
 echo "Building HNSW index on remote"
-echo "This may take upwards of 20 minutes..."
+echo "This may take upwards of 30 minutes..."
 {
   echo "SET max_parallel_maintenance_workers = 0;"
   echo "SET maintenance_work_mem = '2GB';"
