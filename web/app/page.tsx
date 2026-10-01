@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { PageHeader } from "../components/page-header";
 
 type Result = {
   sourceUrl: string;
@@ -35,9 +36,7 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto max-w-5xl p-6">
-      <h1 className="mb-6 border-b-4 border-black pb-3 text-3xl tracking-widest uppercase">
-        LAION SEARCH
-      </h1>
+      <PageHeader title="LAION SEARCH" />
 
       <form onSubmit={handleSubmit} className="flex border-2 border-black">
         <input

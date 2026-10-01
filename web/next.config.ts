@@ -11,7 +11,12 @@ if (fs.existsSync(envPath)) {
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["@huggingface/transformers"],
+  serverExternalPackages: ["@huggingface/transformers", "sharp"],
+  outputFileTracingIncludes: {
+    "/api/score": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+    "/api/embed-image": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+    "/api/interrogate": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+  },
   agentRules: false,
 };
 

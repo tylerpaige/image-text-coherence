@@ -2,13 +2,10 @@
 
 This repo offers a suite of tools for art students to learn about machine learning's understanding of image/text relations. Namely it helps them explore the idea of image-text coherence.
 
-At present, there is only one tool. It is a text-to-image search tool: type a query, get back images retrieved from a ~250k-image subset of LAION-2B by CLIP visual similarity, each shown with its caption and similarity score. Images are hotlinked from their original source, never re-hosted.
-
-Future tools might include:
-
-- CLIP interrogator: upload an image and get back the text that CLIP thinks relates to the image
-- Personal corpus search: a text-to-image search tool for your own corpus of images, once again using CLIP as a mediator
-- Text/image comparison: upload an image and supply some text. CLIP tells you how closely they relate.
+- **Search**: type a query, get back images retrieved from a ~250k-image subset of LAION-2B by CLIP visual similarity, each shown with its caption and similarity score. Images are hotlinked from their original source, never re-hosted.
+- **Personal corpus search**: upload up to 100 of your own images and search them with text. The pictures stay in the browser; the server only computes embeddings.
+- **Score**: upload an image and enter text. CLIP reports the cosine similarity.
+- **Interrogate**: upload an image. CLIP ranks a fixed list of phrases and shows the closest ones.
 
 ## How it works
 
@@ -29,6 +26,7 @@ Future tools might include:
   - Downloads a CLIP model to a cache on disk
   - Specifically, it uses `Xenova/clip-vit-base-patch32`, which is the transformers.js port of the same model used in the offline pipeline. This ensures that website is searching the same vector space as the prepared data.
   - When a user enters a search term, transformers.js embeds it in-process
+  - Uploaded images are embedded with the same checkpoint's vision tower and then discarded
   - The app then queries Postgres for similar records, using pgvector cosine similarity
   - The app is password protected so we don't run up a huge bill
 
@@ -73,7 +71,7 @@ Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`,
 
 ## Prepare the remote environment
 
-These instructions assume you have a Ubuntu server somewhere to deploy this application. Make sure you can SSH in! I am using a Digital Ocean droplet (basic, 1 shared vcpu, 2gb RAM).
+These instructions assume you have a Ubuntu server somewhere to deploy this application. Make sure you can SSH in! I am using a Digital Ocean droplet (basic, 1 shared vcpu, 2gb RAM). The web process loads both CLIP towers, text and vision; 2GB is the floor once Postgres is running as well.
 
 We will deploy the application with Kamal.
 
