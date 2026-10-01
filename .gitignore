@@ -11,7 +11,7 @@ web/.next/
 web/.env
 web/.env.local
 
-# docker-compose env (see .env.example)
+# Local env for Compose, the web app, and the pipeline (see .env.example)
 .env
 
 # Kamal production secrets (see .env.production.example)

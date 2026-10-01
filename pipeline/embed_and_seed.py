@@ -9,7 +9,7 @@ embedding in the web app (Xenova/clip-vit-base-patch32).
 Deletes each image file locally after it's successfully embedded and
 inserted, since the web app only ever hotlinks the original source_url.
 
-Run db/schema.sql against LOCAL_DATABASE_URL before running this script.
+Run db/schema.sql against DATABASE_URL before running this script.
 """
 
 import argparse
@@ -21,12 +21,13 @@ from pathlib import Path
 import open_clip
 import psycopg2
 import torch
-from dotenv import load_dotenv
 from PIL import Image
 from pgvector.psycopg2 import register_vector
 from tqdm import tqdm
 
-load_dotenv()
+from env import load_root_env
+
+load_root_env()
 
 BATCH_SIZE = 64
 
@@ -97,7 +98,7 @@ def main():
     )
     args = parser.parse_args()
 
-    db_url = os.environ["LOCAL_DATABASE_URL"]
+    db_url = os.environ["DATABASE_URL"]
 
     if torch.cuda.is_available():
         device = "cuda"
@@ -155,7 +156,7 @@ def main():
     cur.close()
     conn.close()
     print(f"Attempted to insert {inserted} rows.")
-    print("Now build the vector index: psql $LOCAL_DATABASE_URL -f db/create_index.sql")
+    print("Now build the vector index: psql \"$DATABASE_URL\" -f db/create_index.sql")
 
 
 if __name__ == "__main__":

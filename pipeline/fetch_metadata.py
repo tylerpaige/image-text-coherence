@@ -24,7 +24,7 @@ big to reliably grab in one sitting:
     repeatedly (once per session) to build up the candidate pool.
 
 Requires:
-  - HF_TOKEN in the environment (or pipeline/.env), with dataset access
+  - HF_TOKEN in the environment (or the repo-root .env), with dataset access
     accepted at https://huggingface.co/datasets/laion/relaion2B-en-research-safe
 """
 
@@ -35,11 +35,12 @@ import random
 import pandas as pd
 import pyarrow.parquet as pq
 import requests
-from dotenv import load_dotenv
 from huggingface_hub import HfApi, hf_hub_url
 from tqdm import tqdm
 
-load_dotenv()
+from env import load_root_env
+
+load_root_env()
 
 DATASET_REPO = "laion/relaion2B-en-research-safe"
 SHARDS_DIR = "data/metadata_shards"
@@ -223,7 +224,7 @@ def main():
     token = os.environ.get("HF_TOKEN")
     if not token:
         raise SystemExit(
-            "Set HF_TOKEN in pipeline/.env (accept the dataset terms at "
+            "Set HF_TOKEN in the repo-root .env (accept the dataset terms at "
             f"https://huggingface.co/datasets/{DATASET_REPO} first)"
         )
 

@@ -43,10 +43,11 @@ Requires Python 3.11+ and a Hugging Face account with access accepted at
 https://huggingface.co/datasets/laion/relaion2B-en-research-safe.
 
 ```bash
+cp .env.example .env   # fill in HF_TOKEN; this file is also what the web app reads
+
 cd pipeline
 python3.11 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in HF_TOKEN
 
 # 1. Sample candidate rows (over-samples to survive link rot)
 python fetch_metadata.py --num-shards 2 --rows-per-shard 500000
@@ -60,8 +61,8 @@ python download_images.py
 cd ..
 docker compose up -d db
 
-# 4. Back in pipeline/, set LOCAL_DATABASE_URL in .env to
-#    postgresql://postgres:postgres@localhost:5433/laion
+# 4. Seed from the host. DATABASE_URL in the root .env already points
+#    at localhost:5433.
 cd pipeline
 python embed_and_seed.py --limit 250000
 psql postgresql://postgres:postgres@localhost:5433/laion -f ../db/create_index.sql
@@ -98,10 +99,11 @@ close your laptop and pick up later by just re-running the same command:
 2. Run:
 
    ```bash
-   LOCAL_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/laion \
    REMOTE_DATABASE_URL=<your Fly MPG connection string> \
    ./db/push_to_remote.sh
    ```
+
+   The script reads the local source from `DATABASE_URL` in `.env`.
 
 ## 3. Local development
 
@@ -109,7 +111,7 @@ The web app runs in Docker via `docker-compose.yml`, alongside a local
 Postgres with pgvector (schema auto-applied on first boot from `db/schema.sql`).
 
 ```bash
-cp .env.example .env   # set APP_PASSWORD and SESSION_SECRET
+cp .env.example .env   # same file as the pipeline; set APP_PASSWORD and SESSION_SECRET
 docker compose up
 ```
 
@@ -118,18 +120,17 @@ to the app hot-reload; `node_modules`/`.next` stay inside the container via
 anonymous volumes.
 
 To seed the local compose database with real data, run the pipeline's
-`embed_and_seed.py` with `LOCAL_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/laion`
+`embed_and_seed.py`. It uses `DATABASE_URL` from `.env`
 (`docker-compose.yml` publishes Postgres on host port 5433, since 5432 is
 often already taken by a native Postgres install), then
-`psql "$LOCAL_DATABASE_URL" -f db/create_index.sql`.
+`psql "$DATABASE_URL" -f db/create_index.sql`.
 
 Without Docker, you can also just run the Next.js app directly:
 
 ```bash
 cd web
 pnpm install
-cp .env.example .env.local   # DATABASE_URL, APP_PASSWORD, SESSION_SECRET
-pnpm dev
+pnpm dev   # reads DATABASE_URL, APP_PASSWORD, and SESSION_SECRET from ../.env
 ```
 
 ## 4. Deploy to Fly.io

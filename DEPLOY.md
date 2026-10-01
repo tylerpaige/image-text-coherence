@@ -122,22 +122,18 @@ The droplet's Postgres is bound to `127.0.0.1` only (not exposed publicly),
 so reach it via an SSH tunnel:
 
 ```bash
-ssh -N -L 5433:localhost:5432 root@<DROPLET_IP> &
+ssh -N -L 5434:localhost:5432 root@<DROPLET_IP> &
 ```
 
-Then, same as the existing local → remote push, but targeting the tunnel:
+Port 5434, because local Postgres is already on 5433. Then push. The script
+reads the local source from `DATABASE_URL` in `.env` and writes to the tunnel:
 
 ```bash
-LOCAL_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/laion \
-REMOTE_DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5433/laion \
+REMOTE_DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5434/laion \
 ./db/push_to_remote.sh
 ```
 
-Wait -- both point at `localhost:5433`? Yes: the tunnel makes the droplet's
-Postgres appear as `localhost:5433` to your machine, so use your own local
-seeded Postgres as `LOCAL_DATABASE_URL` (per the main README) and the
-tunnel as `REMOTE_DATABASE_URL`. Kill the tunnel (`kill %1`, or `fg` then
-Ctrl-C) when done.
+Kill the tunnel (`kill %1`, or `fg` then Ctrl-C) when done.
 
 ## Ongoing deploys
 

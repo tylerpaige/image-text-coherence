@@ -1,5 +1,5 @@
 -- Run against the LOCAL database before seeding:
---   psql "$LOCAL_DATABASE_URL" -f db/schema.sql
+--   psql "$DATABASE_URL" -f db/schema.sql
 --
 -- On the remote (Fly Managed Postgres) side, enable the "Vector" extension
 -- from the Fly dashboard/API for the cluster first -- this file is not run
