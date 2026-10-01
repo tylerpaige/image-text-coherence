@@ -16,14 +16,19 @@ CMD ["pnpm", "dev"]
 
 FROM deps AS builder
 COPY . .
-RUN pnpm run build
+RUN pnpm run build \
+ && mkdir -p /sharp-bundle \
+ && cp -aL node_modules/sharp /sharp-bundle/sharp
 
-# Production image -- this is the default target, used by `fly deploy`.
+# Production image -- this is the default target, used by Kamal.
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# Standalone tracing skips sharp's libvips directory (see next.config.ts).
+# This copy follows pnpm's symlinks so the decoder is a real directory.
+COPY --from=builder /sharp-bundle/sharp ./node_modules/sharp
 
 EXPOSE 3000
 ENV PORT=3000

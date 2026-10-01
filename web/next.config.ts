@@ -12,11 +12,10 @@ if (fs.existsSync(envPath)) {
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["@huggingface/transformers", "sharp"],
-  outputFileTracingIncludes: {
-    "/api/score": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
-    "/api/embed-image": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
-    "/api/interrogate": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
-  },
+  // Do not add outputFileTracingIncludes for sharp or @img. Turbopack's
+  // standalone trace tries to read @img/sharp-libvips-* as a file, but that
+  // package is a directory, and the production build aborts. The runtime
+  // image copies a dereferenced sharp install instead (see the Dockerfile).
   agentRules: false,
 };
 
