@@ -1,25 +1,21 @@
-# Kamal deploy config -- see DEPLOY.md at the repo root for the full,
-# step-by-step walkthrough (droplet setup, DNS, secrets, first deploy).
-#
-# Fill in the two placeholders below before your first deploy:
-#   <DROPLET_IP>      -- your DigitalOcean droplet's public IP
-#   <YOUR_DOMAIN>     -- a domain/subdomain pointed at that IP (A record)
-# Everything else (image name, GHCR registry) is already resolved against
-# this repo's GitHub remote (tylerpaige/image-text-coherence).
-
 service: image-text-coherence
+
+# The name of the image in the container registry. If you are using GitHub's private registry, this will be <username>/<repo-name>
 image: tylerpaige/image-text-coherence
 
 servers:
   web:
     hosts:
+      # Your server's IP address
       - 159.223.100.215 
 
 proxy:
   ssl: true
+  # Your custom domain
   host: image-text.typo.school
   app_port: 3000
 
+# The container registry. I am using GitHub's private registry.
 registry:
   server: ghcr.io
   username: tylerpaige
@@ -44,9 +40,9 @@ env:
 accessories:
   db:
     image: pgvector/pgvector:pg16
+    # Your server's IP address
     host: 159.223.100.215
-    # Bound to localhost only -- reach it from your laptop via an SSH
-    # tunnel (see DEPLOY.md), never exposed to the public internet.
+    # Bound to localhost only -- reach it from your laptop via an SSH tunnel, never exposed to the public internet.
     port: "127.0.0.1:5432:5432"
     env:
       clear:

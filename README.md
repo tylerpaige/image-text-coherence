@@ -1,43 +1,38 @@
-# LAION Search
+# Image Text Coherence
 
-A text-to-image search tool for students: type a query, get back images retrieved
-from a ~250k-image subset of LAION-2B by CLIP visual similarity, each shown with
-its caption and similarity score. Images are hotlinked from their original source,
-never re-hosted.
+This repo offers a suite of tools for art students to learn about machine learning's understanding of image/text relations. Namely it helps them explore the idea of image-text coherence.
+
+At present, there is only one tool. It is a text-to-image search tool: type a query, get back images retrieved from a ~250k-image subset of LAION-2B by CLIP visual similarity, each shown with its caption and similarity score. Images are hotlinked from their original source, never re-hosted.
+
+Future tools might include:
+
+- CLIP interrogator: upload an image and get back the text that CLIP thinks relates to the image
+- Personal corpus search: a text-to-image search tool for your own corpus of images, once again using CLIP as a mediator
+- Text/image comparison: upload an image and supply some text. CLIP tells you how closely they relate.
 
 ## How it works
 
-- **Offline pipeline** (`pipeline/`, Python): samples URLs/captions from the
-  [`laion/relaion2B-en-research-safe`](https://huggingface.co/datasets/laion/relaion2B-en-research-safe)
-  dataset (the safety-vetted successor to the original LAION-2B, after LAION
-  pulled the original release following the Stanford Internet Observatory's
-  CSAM findings), downloads the images, embeds each one with CLIP
-  (`open_clip`, `ViT-B-32`, **openai** pretrained weights), and seeds a local
-  Postgres database.
-- **Database** (`db/`): Postgres + [pgvector](https://github.com/pgvector/pgvector).
-  One `images` table: `source_url`, `caption`, `laion_similarity` (the
-  original LAION CLIP score), and `embedding vector(512)`.
-- **Web app** (`web/`): Next.js. At search time, the query text is embedded
-  in-process with [`@huggingface/transformers`](https://github.com/huggingface/transformers.js)
-  using `Xenova/clip-vit-base-patch32` — the transformers.js port of the
-  *same* OpenAI CLIP ViT-B/32 checkpoint used offline, so query and image
-  embeddings share one vector space. Results are ranked by pgvector cosine
-  similarity. The whole site sits behind a single shared class password.
+- Offline pipeline prepares data locally so that we can take advantage of local hardware which is free. The prepared data is then pushed to the remote environment.
+  - takes URLs/captions from the [`laion/relaion2B-en-research-safe`](https://huggingface.co/datasets/laion/relaion2B-en-research-safe) dataset
+  - downloads the images
+  - embeds each one with CLIP (`open_clip`, `ViT-B-32`, openai pretrained weights)
+  - seeds a local Postgres database
+- Database
+  - Postgres and pgvector
+  - One `images` table that records...
+    - the original image URL
+    - the original caption
+    - the original LAION clip score, which isn't really used for anything.
+    - the embedding vector (512 dimensions) that we generated locally
+- Next.js app that provides a user-friendly interface
+  - Uses [`@huggingface/transformers`](https://github.com/huggingface/transformers.js) to run CLIP in a Node environment
+  - Downloads a CLIP model to a cache on disk
+  - Specifically, it uses `Xenova/clip-vit-base-patch32`, which is the transformers.js port of the same model used in the offline pipeline. This ensures that website is searching the same vector space as the prepared data.
+  - When a user enters a search term, transformers.js embeds it in-process
+  - The app then queries Postgres for similar records, using pgvector cosine similarity
+  - The app is password protected so we don't run up a huge bill
 
-**Why OpenAI CLIP weights and not a LAION-retrained checkpoint?** Doing so
-lets the query-embedding step run inside the Next.js Node process via
-transformers.js, with no separate Python inference service to deploy.
-
-## Repo layout
-
-```
-pipeline/     Python scripts: fetch metadata -> download images -> embed + seed
-db/           Postgres schema, HNSW index, local -> remote push script
-web/          Next.js app (Tailwind, pnpm, Node 26)
-docker-compose.yml   Local dev: Postgres + the web app, wired together
-```
-
-## 1. Build the dataset (run locally, once)
+## Build the dataset (run locally, once)
 
 Requires Python 3.11+ and a Hugging Face account with access accepted at
 https://huggingface.co/datasets/laion/relaion2B-en-research-safe.
@@ -68,91 +63,118 @@ python embed_and_seed.py --limit 250000
 psql postgresql://postgres:postgres@localhost:5433/laion -f ../db/create_index.sql
 ```
 
-Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`,
-`--limit 500`) to confirm your HF token and Postgres connection work before
-committing to the full ~250k-image run.
+Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`, `--limit 500`) to confirm your HF token and Postgres connection work before committing to the full ~250k-image run.
 
-**Both download steps are resumable across sessions** -- safe to Ctrl-C or
-close your laptop and pick up later by just re-running the same command:
+**Both download steps are resumable across sessions** -- safe to Ctrl-C or close your laptop and pick up later by just re-running the same command:
 
-- `fetch_metadata.py`: each shard's raw parquet file is ~3-4GB. We can't rely
-  on `huggingface_hub`'s own caching for this -- as of `huggingface_hub` 2.x
-  it downloads to a process-unique temp file and deletes it on any
-  interruption (no cross-process resume). Instead this script does its own
-  HTTP Range-based resumable download into `data/hf_raw_shards/`, and once a
-  shard is fully downloaded and sampled it's cached at the row level in
-  `data/metadata_shards/` and the raw file is deleted. Re-running the exact
-  same command resumes the in-progress shard's download and skips any shard
-  already sampled.
-- `download_images.py`: img2dataset's incremental mode (on by default) skips
-  any shard it already finished. `--samples-per-shard` (default 1000) caps
-  how much work gets redone for the one shard that was mid-download when the
-  process was killed.
-- `embed_and_seed.py`: each image is deleted from disk right after it's
-  successfully embedded and inserted (`ON CONFLICT DO NOTHING`), so a
-  restart just picks up with whatever images are still on disk.
+- `fetch_metadata.py`: each shard's raw parquet file is ~3-4GB. We can't rely on `huggingface_hub`'s own caching for this -- as of `huggingface_hub` 2.x it downloads to a process-unique temp file and deletes it on any interruption (no cross-process resume). Instead this script does its own HTTP Range-based resumable download into `data/hf_raw_shards/`, and once a shard is fully downloaded and sampled it's cached at the row level in `data/metadata_shards/` and the raw file is deleted. Re-running the exact same command resumes the in-progress shard's download and skips any shard already sampled.
+- `download_images.py`: img2dataset's incremental mode (on by default) skips any shard it already finished. `--samples-per-shard` (default 1000) caps how much work gets redone for the one shard that was mid-download when the process was killed.
+- `embed_and_seed.py`: each image is deleted from disk right after it's successfully embedded and inserted (`ON CONFLICT DO NOTHING`), so a restart just picks up with whatever images are still on disk.
 
-## 2. Push to the remote database
+## Prepare the remote environment
 
-1. Create a Fly Managed Postgres cluster and enable the **Vector** extension
-   from the Fly dashboard/API.
-2. Run:
+These instructions assume you have a Ubuntu server somewhere to deploy this application. Make sure you can SSH in! I am using a Digital Ocean droplet (basic, 1 shared vcpu, 2gb RAM).
 
-   ```bash
-   REMOTE_DATABASE_URL=<your Fly MPG connection string> \
-   ./db/push_to_remote.sh
-   ```
+We will deploy the application with Kamal.
 
-   The script reads the local source from `DATABASE_URL` in `.env`.
+### Set up a Docker container registry
 
-## 3. Local development
+Kamal requires a container registry. I am using GitHub's private registry. If you want to do the same, here are instructions:
 
-The web app runs in Docker via `docker-compose.yml`, alongside a local
-Postgres with pgvector (schema auto-applied on first boot from `db/schema.sql`).
+- GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token.
+- Choose the `write:packages` scope
+- Copy the token
+- Use it as your `KAMAL_REGISTRY_PASSWORD` environment variable in `.env.production`
+
+### Set up custom domains
+
+If you intend to have this available at a custom domain, setup the DNS now. The easiest implementation will be to create an A record pointing to your server's IP address.
+
+### Configure Kamal
+
+Install Kamal (it's a Ruby gem):
 
 ```bash
-cp .env.example .env   # same file as the pipeline; set APP_PASSWORD and SESSION_SECRET
+gem install kamal
+```
+
+Create an `.env.production` file that Kamal will use.
+
+| Variable                  | Value                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `KAMAL_REGISTRY_PASSWORD` | the GitHub token from step 3                                                             |
+| `APP_PASSWORD`            | the shared class password                                                                |
+| `SESSION_SECRET`          | `openssl rand -base64 32`                                                                |
+| `POSTGRES_PASSWORD`       | `openssl rand -base64 24`                                                                |
+| `DATABASE_URL`            | `postgresql://postgres:<the POSTGRES_PASSWORD above>@image-text-coherence-db:5432/laion` |
+
+Load these into your shell before any `kamal` command:
+
+```bash
+set -a && source .env.production && set +a
+```
+
+Edit `config/deploy.yml`. There are comments throughout the file indicating what each value should be.
+
+### Deploy the app
+
+> [!WARNING]
+> Note that you need to use the production environment variables when running kamal commands.
+> ```bash
+> set -a && source .env.production && set +a
+> ```
+
+The first time you deploy, you need to set up Kamal on the server. This installs Docker on the droplet if needed, boots `kamal-proxy`, boots the Postgres accessory (auto-applying `db/schema.sql` on first boot, same as `docker-compose.yml` does locally), builds and pushes the image, and deploys the app. It'll request a Let's Encrypt certificate for your domain automatically if `proxy.ssl` is set.
+
+```bash
+kamal setup
+```
+
+On subsequent deploys:
+
+```bash
+kamal deploy
+```
+
+### Seed the remote database
+
+Set up an SSH tunnel so you can access the remote Postgres service (which is not exposed publicly for safety). Note that we use port `5434` to avoid conflicts with other local services.
+
+```bash
+ssh -N -L 5434:localhost:5432 root@<SERVER_IP> &
+```
+
+Then run this script to push your local db to the remote db
+
+```bash
+REMOTE_DATABASE_URL=postgresql://postgres:<POSTGRES_PASSWORD>@localhost:5434/laion ./db/push_to_remote.sh
+```
+
+Kill the tunnel (`kill %1`, or `fg` then Ctrl-C) when done.
+
+## Local development
+
+The web app runs in Docker via `docker-compose.yml`, alongside a local Postgres with pgvector (schema auto-applied on first boot from `db/schema.sql`).
+
+```bash
 docker compose up
 ```
 
-Visit http://localhost:3000. The `web` service bind-mounts `./web`, so edits
-to the app hot-reload; `node_modules`/`.next` stay inside the container via
-anonymous volumes.
+Visit http://localhost:3000
 
-To seed the local compose database with real data, run the pipeline's
-`embed_and_seed.py`. It uses `DATABASE_URL` from `.env`
-(`docker-compose.yml` publishes Postgres on host port 5433, since 5432 is
-often already taken by a native Postgres install), then
-`psql "$DATABASE_URL" -f db/create_index.sql`.
+## Remote debugging
 
-Without Docker, you can also just run the Next.js app directly:
+ Useful commands:
 
 ```bash
-cd web
-pnpm install
-pnpm dev   # reads DATABASE_URL, APP_PASSWORD, and SESSION_SECRET from ../.env
+kamal app logs -f          # tail the app's logs
+kamal app exec --interactive "sh"   # shell into the running container
+kamal accessory logs db    # tail Postgres's logs
+kamal rollback             # roll back to the previous deployed version
 ```
-
-## 4. Deploy to Fly.io
-
-```bash
-cd web
-fly launch --no-deploy   # or edit fly.toml's `app` name, then `fly apps create <name>`
-fly secrets set DATABASE_URL=<remote Fly MPG connection string>
-fly secrets set APP_PASSWORD=<shared class password>
-fly secrets set SESSION_SECRET=$(openssl rand -base64 32)
-fly deploy
-```
-
-If the app gets OOM-killed after deploy (the CLIP query-embedding model
-loads into memory), bump `[[vm]] memory` in `web/fly.toml`.
 
 ## Known quirks
 
 - Some result thumbnails won't load — the underlying LAION URLs are years
   old and a meaningful fraction are dead or hotlink-protected. This is
   inherent to hotlinking rather than re-hosting images.
-- `laion_similarity` (stored per row) is LAION's own original CLIP
-  image/caption similarity from when the dataset was built; the `score`
-  shown in the UI is the live cosine similarity between your query and that
-  image, which is the number that actually drives ranking.
