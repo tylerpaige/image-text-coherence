@@ -5,7 +5,7 @@ This repo offers a suite of tools for art students to learn about machine learni
 - **Search**: type a query, get back images retrieved from a ~250k-image subset of LAION-2B by CLIP visual similarity, each shown with its caption and similarity score. Images are hotlinked from their original source, never re-hosted.
 - **Personal corpus search**: upload up to 100 of your own images and search them with text. The pictures stay in the browser; the server only computes embeddings.
 - **Score**: upload an image and enter text. CLIP reports the cosine similarity.
-- **Interrogate**: upload an image. CLIP ranks a fixed list of phrases and shows the closest ones.
+- **Interrogate**: upload an image. CLIP finds the closest images in the LAION subset and shows their original captions. The inverse of search.
 
 ## How it works
 
