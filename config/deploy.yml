@@ -47,7 +47,7 @@ accessories:
     env:
       clear:
         POSTGRES_USER: postgres
-        POSTGRES_DB: laion
+        POSTGRES_DB: image-text-coherence
       secret:
         - POSTGRES_PASSWORD
     files:

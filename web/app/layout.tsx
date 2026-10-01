@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "LAION SEARCH",
+  title: "IMAGE TEXT COHERENCE",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

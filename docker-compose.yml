@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: laion
+      POSTGRES_DB: image-text-coherence
     ports:
       # Published on 5433 -- 5432 is commonly already taken by a native
       # Postgres install on the host.
@@ -30,7 +30,7 @@ services:
     environment:
       # `db` resolves via Docker's internal network -- this container never
       # talks to the remote Fly Postgres instance.
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/laion
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/image-text-coherence
       APP_PASSWORD: ${APP_PASSWORD:-changeme}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in a .env file (see .env.example)}
     volumes:

@@ -109,7 +109,7 @@ for name, value in (
 PY
 )"
 
-if ! docker compose exec -T db pg_isready -U postgres -d laion >/dev/null; then
+if ! docker compose exec -T db pg_isready -U postgres -d image-text-coherence >/dev/null; then
   echo "Local db container is not ready. Start it with: docker compose up -d db" >&2
   exit 1
 fi
@@ -129,7 +129,7 @@ cleanup() {
     kill "$TUNNEL_PID" >/dev/null 2>&1 || true
     wait "$TUNNEL_PID" 2>/dev/null || true
   fi
-  docker compose exec -T db rm -f /tmp/laion_images.dump >/dev/null 2>&1 || true
+  docker compose exec -T db rm -f /tmp/image-text-coherence.dump >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 

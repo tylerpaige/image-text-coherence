@@ -34,7 +34,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center">
       <form onSubmit={handleSubmit} className="flex w-80 flex-col border-2 border-black">
         <h1 className="border-b-2 border-black p-4 text-center text-lg tracking-widest uppercase">
-          LAION SEARCH
+          IMAGE TEXT COHERENCE
         </h1>
         <input
           type="password"

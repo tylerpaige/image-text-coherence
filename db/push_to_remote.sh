@@ -109,7 +109,7 @@ for name, value in (
 PY
 )"
 
-if ! docker compose exec -T db pg_isready -U postgres -d laion >/dev/null; then
+if ! docker compose exec -T db pg_isready -U postgres -d image-text-coherence >/dev/null; then
   echo "Local db container is not ready. Start it with: docker compose up -d db" >&2
   exit 1
 fi
@@ -129,7 +129,7 @@ cleanup() {
     kill "$TUNNEL_PID" >/dev/null 2>&1 || true
     wait "$TUNNEL_PID" 2>/dev/null || true
   fi
-  docker compose exec -T db rm -f /tmp/laion_images.dump >/dev/null 2>&1 || true
+  docker compose exec -T db rm -f /tmp/image-text-coherence.dump >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -174,14 +174,14 @@ docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   psql -h host.docker.internal -p "$LOCAL_PORT" -U "$PGUSER" -d "$PGDATABASE" -c "SELECT 1" >/dev/null
 
 echo "Dumping local 'images' table inside the db container"
-docker compose exec -T db pg_dump -U postgres -d laion -Fc -t images -f /tmp/laion_images.dump
+docker compose exec -T db pg_dump -U postgres -d image-text-coherence -Fc -t images -f /tmp/image-text-coherence.dump
 
 echo "Restoring into remote database"
 echo "This may take upwards of 20 minutes..."
 docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   pg_restore --clean --if-exists --no-owner --no-privileges \
   -h host.docker.internal -p "$LOCAL_PORT" -U "$PGUSER" -d "$PGDATABASE" \
-  /tmp/laion_images.dump
+  /tmp/image-text-coherence.dump
 
 echo "Building HNSW index on remote"
 echo "This may take upwards of 20 minutes..."

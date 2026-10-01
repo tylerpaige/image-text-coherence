@@ -58,7 +58,7 @@ docker compose up -d db
 #    at localhost:5433.
 cd pipeline
 python embed_and_seed.py --limit 250000
-psql postgresql://postgres:postgres@localhost:5433/laion -f ../db/create_index.sql
+psql postgresql://postgres:postgres@localhost:5433/image-text-coherence -f ../db/create_index.sql
 ```
 
 Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`, `--limit 500`) to confirm your HF token and Postgres connection work before committing to the full ~250k-image run.
@@ -104,7 +104,7 @@ Create an `.env.production` file that Kamal will use.
 | `APP_PASSWORD`            | the shared class password                                                                |
 | `SESSION_SECRET`          | `openssl rand -base64 32`                                                                |
 | `POSTGRES_PASSWORD`       | `openssl rand -base64 24`                                                                |
-| `DATABASE_URL`            | `postgresql://postgres:<the POSTGRES_PASSWORD above>@image-text-coherence-db:5432/laion` |
+| `DATABASE_URL`            | `postgresql://postgres:<the POSTGRES_PASSWORD above>@image-text-coherence-db:5432/image-text-coherence` |
 
 Load these into your shell before any `kamal` command:
 
