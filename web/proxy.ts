@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidSessionCookie, SESSION_COOKIE_NAME } from "./lib/session";
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|api/login).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|api/login|up).*)"],
 };
 
 export async function proxy(request: NextRequest) {

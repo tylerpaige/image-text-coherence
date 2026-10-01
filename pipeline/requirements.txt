@@ -1,4 +1,4 @@
-img2dataset==1.45.0
+img2dataset==1.47.0
 open_clip_torch==2.29.0
 torch>=2.2
 huggingface_hub>=0.24

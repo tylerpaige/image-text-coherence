@@ -14,6 +14,9 @@ web/.env.local
 # docker-compose env (see .env.example)
 .env
 
+# Kamal production secrets (see .env.production.example)
+.env.production
+
 # Misc
 .DS_Store
 *.dump

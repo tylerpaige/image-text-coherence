@@ -1,0 +1,60 @@
+# Kamal deploy config -- see DEPLOY.md at the repo root for the full,
+# step-by-step walkthrough (droplet setup, DNS, secrets, first deploy).
+#
+# Fill in the two placeholders below before your first deploy:
+#   <DROPLET_IP>      -- your DigitalOcean droplet's public IP
+#   <YOUR_DOMAIN>     -- a domain/subdomain pointed at that IP (A record)
+# Everything else (image name, GHCR registry) is already resolved against
+# this repo's GitHub remote (tylerpaige/image-text-coherence).
+
+service: image-text-coherence
+image: tylerpaige/image-text-coherence
+
+servers:
+  web:
+    hosts:
+      - 159.223.100.215 
+
+proxy:
+  ssl: true
+  host: image-text.typo.school
+  app_port: 3000
+
+registry:
+  server: ghcr.io
+  username: tylerpaige
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  # Paths are relative to the repo root (where `kamal` is run), not to each
+  # other. Context stays `web` so the Dockerfile's COPY paths still match.
+  context: web
+  dockerfile: web/Dockerfile
+
+env:
+  clear:
+    PORT: "3000"
+  secret:
+    - DATABASE_URL
+    - APP_PASSWORD
+    - SESSION_SECRET
+
+accessories:
+  db:
+    image: pgvector/pgvector:pg16
+    host: 159.223.100.215
+    # Bound to localhost only -- reach it from your laptop via an SSH
+    # tunnel (see DEPLOY.md), never exposed to the public internet.
+    port: "127.0.0.1:5432:5432"
+    env:
+      clear:
+        POSTGRES_USER: postgres
+        POSTGRES_DB: laion
+      secret:
+        - POSTGRES_PASSWORD
+    files:
+      - db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    directories:
+      - data:/var/lib/postgresql/data

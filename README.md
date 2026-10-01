@@ -55,13 +55,16 @@ python fetch_metadata.py --num-shards 2 --rows-per-shard 500000
 #    short of your target count -- expect significant link rot)
 python download_images.py
 
-# 3. Start a local Postgres, apply the schema, embed + seed
-docker run --name laion-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=laion \
-  -p 5432:5432 -d pgvector/pgvector:pg16
-psql postgresql://postgres:postgres@localhost:5432/laion -f ../db/schema.sql
+# 3. Start the Compose Postgres (from the repo root). It publishes on host
+#    port 5433 and applies db/schema.sql on first boot.
+cd ..
+docker compose up -d db
 
+# 4. Back in pipeline/, set LOCAL_DATABASE_URL in .env to
+#    postgresql://postgres:postgres@localhost:5433/laion
+cd pipeline
 python embed_and_seed.py --limit 250000
-psql postgresql://postgres:postgres@localhost:5432/laion -f ../db/create_index.sql
+psql postgresql://postgres:postgres@localhost:5433/laion -f ../db/create_index.sql
 ```
 
 Tip: run each script against a small sample first (e.g. `--rows-per-shard 2000`,
@@ -95,7 +98,7 @@ close your laptop and pick up later by just re-running the same command:
 2. Run:
 
    ```bash
-   LOCAL_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/laion \
+   LOCAL_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/laion \
    REMOTE_DATABASE_URL=<your Fly MPG connection string> \
    ./db/push_to_remote.sh
    ```
