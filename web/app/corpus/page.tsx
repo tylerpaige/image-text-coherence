@@ -20,7 +20,8 @@ export default function CorpusPage() {
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [ranked, setRanked] = useState<{ item: Item; score: number }[] | null>(null);
-  const [progress, setProgress] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const urlsRef = useRef<string[]>([]);
@@ -76,11 +77,13 @@ export default function CorpusPage() {
 
     setError(null);
     setRanked(null);
-    const added: Item[] = [];
+    setNotice(null);
+    setBusy(true);
+    let embedded = 0;
     try {
       for (let i = 0; i < files.length; i++) {
-        setProgress(`${i + 1} / ${files.length}`);
         const file = files[i];
+        setNotice(`EMBEDDING ${i + 1} OF ${files.length}`);
         const body = new FormData();
         body.set("image", file);
         const res = await fetch("/api/embed-image", { method: "POST", body });
@@ -95,23 +98,24 @@ export default function CorpusPage() {
         };
         await saveCorpusImage(record);
         const url = URL.createObjectURL(file);
-        added.push({
-          id: record.id,
-          name: record.name,
-          url,
-          embedding: record.embedding,
-        });
+        urlsRef.current.push(url);
+        setItems((current) => [
+          ...current,
+          {
+            id: record.id,
+            name: record.name,
+            url,
+            embedding: record.embedding,
+          },
+        ]);
+        embedded += 1;
       }
-      urlsRef.current.push(...added.map((item) => item.url));
-      setItems((current) => [...current, ...added]);
+      setNotice(embedded === 1 ? "EMBEDDED 1 IMAGE" : `EMBEDDED ${embedded} IMAGES`);
     } catch (err) {
-      if (added.length > 0) {
-        urlsRef.current.push(...added.map((item) => item.url));
-        setItems((current) => [...current, ...added]);
-      }
+      setNotice(embedded > 0 ? `EMBEDDED ${embedded} OF ${files.length}` : null);
       setError(err instanceof Error ? err.message : "UPLOAD FAILED");
     } finally {
-      setProgress(null);
+      setBusy(false);
     }
   }
 
@@ -124,6 +128,7 @@ export default function CorpusPage() {
     }
     setSearching(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch(`/api/embed-text?q=${encodeURIComponent(query.trim())}`);
       if (!res.ok) throw new Error(await errorMessage(res, "SEARCH FAILED"));
@@ -146,6 +151,7 @@ export default function CorpusPage() {
     setItems([]);
     setRanked(null);
     setError(null);
+    setNotice(null);
   }
 
   const shown = ranked
@@ -161,7 +167,7 @@ export default function CorpusPage() {
           type="file"
           multiple
           accept="image/jpeg,image/png,image/webp,image/gif"
-          disabled={!ready || progress !== null}
+          disabled={!ready || busy}
           onChange={(e) => {
             void handleFiles(e.target.files);
             e.target.value = "";
@@ -171,7 +177,7 @@ export default function CorpusPage() {
         <button
           type="button"
           onClick={() => void handleClear()}
-          disabled={!ready || progress !== null || items.length === 0}
+          disabled={!ready || busy || items.length === 0}
           className="cursor-pointer border-2 border-black bg-black px-6 font-bold text-white uppercase hover:bg-white hover:text-black disabled:opacity-40"
         >
           CLEAR
@@ -179,9 +185,10 @@ export default function CorpusPage() {
       </div>
 
       <p className="mt-3 text-xs">
-        {progress ? progress : `${items.length} / ${MAX_CORPUS_IMAGES} IMAGES`}
+        {items.length} / {MAX_CORPUS_IMAGES} IMAGES
       </p>
       <p className="mt-1 text-xs">IMAGES STAY IN THIS BROWSER.</p>
+      {notice && <p className="mt-3 inline-block bg-black px-3 py-2 text-white">{notice}</p>}
 
       <form onSubmit={handleSearch} className="mt-4 flex border-2 border-black">
         <input
@@ -193,7 +200,7 @@ export default function CorpusPage() {
         />
         <button
           type="submit"
-          disabled={searching || progress !== null}
+          disabled={searching || busy}
           className="cursor-pointer border-l-2 border-black bg-black px-6 font-bold text-white uppercase hover:bg-white hover:text-black"
         >
           {searching ? "..." : "SEARCH"}
