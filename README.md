@@ -175,6 +175,60 @@ kamal accessory logs db    # tail Postgres's logs
 kamal rollback             # roll back to the previous deployed version
 ```
 
+### Open a psql session
+
+The app container does not include `psql`. Postgres runs in the `db` accessory, and that image does. With `.env.production` loaded:
+
+```bash
+kamal accessory exec db --interactive --reuse "psql -U postgres -d image-text-coherence"
+```
+
+`--reuse` attaches to the database that is already running. Inside `psql`:
+
+```sql
+SELECT count(*) FROM images;
+SELECT id, left(caption, 80), source_url FROM images LIMIT 5;
+```
+
+`\q` leaves `psql`.
+
+For a single check without an interactive session:
+
+```bash
+kamal accessory exec db --reuse "psql -U postgres -d image-text-coherence -c 'SELECT count(*) FROM images;'"
+```
+
+A count of `0` means the schema exists and the seed has not been pushed yet. Run `./db/push_to_remote.sh` from the repo root to load the local `images` table.
+
+### Back up the remote database
+
+If you ever lose your local db, you can pull a dump from the deployed app. Run this from the repo root. It uses the Postgres 16 client inside the remote database container and streams the dump straight to your machine, so nothing extra is written on the server.
+
+```bash
+ssh root@<ip-address> \
+  'docker exec image-text-coherence-db pg_dump -U postgres -d image-text-coherence -Fc' \
+  > image-text-coherence.dump
+```
+
+`*.dump` is already in `.gitignore`. With about 250k embeddings, expect a file on the order of several hundred megabytes and a few minutes of transfer.
+
+Check that it is a real archive, not an SSH error saved as a file:
+
+```bash
+file image-text-coherence.dump
+```
+
+It should say `PostgreSQL custom database dump`.
+
+To load it back into the local database:
+
+```bash
+docker compose up -d db
+docker compose cp image-text-coherence.dump db:/tmp/image-text-coherence.dump
+docker compose exec -T db pg_restore --clean --if-exists --no-owner --no-privileges \
+  -U postgres -d image-text-coherence /tmp/image-text-coherence.dump
+```
+
 ## Known quirks
 
 - Some result thumbnails won't load — the underlying LAION URLs are years
